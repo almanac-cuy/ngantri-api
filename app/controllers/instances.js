@@ -116,4 +116,37 @@ module.exports = {
 			HttpError.handle(res, error)
 		}
 	},
+	showServices: async (req, res) => {
+		try {
+			const result = await Instance.findById(req.params.id)
+			if (!result) {
+				throw new HttpError(404, 'Not Found', 'Cannot find instance')
+			}
+			const services = result.services
+			res.json({
+				code: 200,
+				status: 'OK',
+				services,
+			})
+		} catch (error) {
+			HttpError.handle(res, error)
+		}
+	},
+	deleteInstance: async (req, res) => {
+		try {
+			const getInstance = await Instance.findById(req.params.id)
+			if (!getInstance) {
+				throw new HttpError(404, 'Not Found', 'Cannot find Instance')
+			}
+
+			await Instance.deleteOne({ _id: req.params.id })
+			res.json({
+				code: 200,
+				status: 'OK',
+				message: 'Succes Delete',
+			})
+		} catch (error) {
+			HttpError.handle(res, error)
+		}
+	},
 }
