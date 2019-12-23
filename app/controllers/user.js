@@ -1,7 +1,8 @@
 const User = require('../models/User')
-const { hash, genSalt } = require('bcryptjs')
+const { hash, genSalt, compare } = require('bcryptjs')
 const HttpError = require('../../helpers/HttpError')
 const gravatar = require('gravatar')
+const jwt = require('jsonwebtoken')
 
 const { validateRegisterInput } = require('../../validators/user')
 
@@ -63,10 +64,25 @@ module.exports = {
 
 	loginUser: async (req, res) => {
 		try {
-			const result = await User.findOne({ email: req.body.email })
+			const { email, password } = req.body
+			const result = await User.findOne({ email })
+
+			if (!result) {
+				throw new HttpError(404, 'Not Found', 'User not found')
+			}
+
 			const user = JSON.parse(JSON.stringify(result))
+
+			const isPasswordMatch = await compare(password, user.password)
+			if (!isPasswordMatch) {
+				throw new HttpError(400, 'Bad Request', 'Wrong Password')
+			}
+
 			delete user.password
-			res.json(user)
+
+			jwt.sign(user, process.env.JWT_SECRET, (err, token) => {
+				res.json(token)
+			})
 		} catch (error) {
 			HttpError.handle(res, error)
 		}
