@@ -1,4 +1,0 @@
-username : admin_ngantri
-password : kIedL2JGjgqmFblj
-
-mongodb+srv://admin_ngantri:kIedL2JGjgqmFblj@ngantri-dw2cw.mongodb.net/test?retryWrites=true&w=majority
