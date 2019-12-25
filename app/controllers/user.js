@@ -3,8 +3,11 @@ const { hash, genSalt, compare } = require('bcryptjs')
 const HttpError = require('../../helpers/HttpError')
 const gravatar = require('gravatar')
 const jwt = require('jsonwebtoken')
-
-const { validateRegisterInput } = require('../../validators/user')
+const messagebird = require('../../config/messagebird')
+const {
+	validateRegisterInput,
+	validateLoginInput,
+} = require('../../validators/user')
 
 module.exports = {
 	register: async (req, res) => {
@@ -14,7 +17,7 @@ module.exports = {
 			const getUser = await User.findOne({ email: req.body.email })
 
 			if (getUser) {
-				throw new HttpError(200, 'Bad Request', 'User already exists')
+				throw new HttpError(400, 'Bad Request', 'User already exists')
 			}
 
 			const { errors, isValid } = validateRegisterInput(req.body)
@@ -64,6 +67,12 @@ module.exports = {
 
 	loginUser: async (req, res) => {
 		try {
+			const { errors, isValid } = validateLoginInput(req.body)
+
+			if (!isValid) {
+				throw new HttpError(400, 'Bad Request', errors)
+			}
+
 			const { email, password } = req.body
 			const result = await User.findOne({ email })
 
@@ -86,5 +95,53 @@ module.exports = {
 		} catch (error) {
 			HttpError.handle(res, error)
 		}
+	},
+	verifyUser: (req, res) => {
+		try {
+			const { phone } = req.body
+
+			messagebird.verify.create(
+				phone,
+				{
+					originator: 'Ngantri.app',
+					template: 'Your verification code is %token. ',
+				},
+				(err, response) => {
+					if (err) {
+						console.log(err)
+						throw new HttpError(400, 'Bad Request', err.errors[0].description)
+					} else {
+						console.log(response)
+						req.messagebird_id = response.id
+						res.json({
+							message: 'Succes send token',
+							id: response.id,
+						})
+					}
+				}
+			)
+		} catch (error) {
+			HttpError.handle(res, error)
+		}
+	},
+	checkVerify: (req, res) => {
+		const id = req.messagebird_id
+		const { token } = req.body
+
+		messagebird.verify.verify(id, token, function(err, response) {
+			if (err) {
+				// Verification has failed
+				console.log(err)
+				// res.render('step2', {
+				// 	error: err.errors[0].description,
+				// 	id: id,
+				// })
+				return res.status(400).json(err.errors[0].description)
+			} else {
+				// Verification was successful
+				console.log(response)
+				res.json(response)
+			}
+		})
 	},
 }

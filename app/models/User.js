@@ -14,6 +14,11 @@ const UserSchema = new Schema({
 		type: Number,
 		required: [true, 'Phone Number Cannot Empty'],
 	},
+	isVeryfied: {
+		type: Boolean,
+		required: true,
+		default: false,
+	},
 	avatar: {
 		type: String,
 	},

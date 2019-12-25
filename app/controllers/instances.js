@@ -1,6 +1,12 @@
 const HttpError = require('../../helpers/HttpError')
 const Instance = require('../models/Instances')
 const Category = require('../models/Categories')
+const {
+	validateInstanceInput,
+	validateServiceInput,
+} = require('../../validators/instances')
+const fs = require('fs')
+const cloudinary = require('../../config/cloudinary')
 
 module.exports = {
 	addInstance: async (req, res) => {
@@ -10,10 +16,37 @@ module.exports = {
 				address,
 				cat_id,
 				cat_name,
-				image,
+				// image,
 				latitude,
 				longitude,
 			} = req.body
+
+			const { errors, isValid } = validateInstanceInput(req.body)
+
+			const { image } = req.files || {}
+			if (!image) {
+				throw new HttpError(400, 'Bad Request', { image: 'No File Selected' })
+			}
+
+			const filetypes = /jpeg|jpg|png|gif/
+			const mimetype = filetypes.test(image.mimetype)
+			if (!mimetype) {
+				try {
+					fs.unlinkSync(image.tempFilePath)
+					throw new HttpError(400, 'Bad Request', 'File Must be an Image')
+				} catch (err) {
+					HttpError.handle(res, err)
+				}
+			}
+
+			if (!isValid) {
+				fs.unlink(image.tempFilePath, err => {
+					if (err) {
+						console.log('Cannot Delete File')
+					}
+				})
+				throw new HttpError(400, 'Bad Request', errors)
+			}
 
 			const findCat = await Category.find()
 
@@ -21,9 +54,23 @@ module.exports = {
 				cat => cat.id === cat_id && cat.name === cat_name
 			)
 			if (currentCat.length === 0) {
-				throw new HttpError(400, 'Bad Request', 'Wrong Category')
+				fs.unlink(image.tempFilePath, err => {
+					if (err) {
+						console.log('Cannot Delete File')
+					}
+				})
+				throw new HttpError(400, 'Bad Request', {
+					cat_id: 'Wrong category',
+					cat_name: 'Wrong category',
+				})
 			}
 
+			const uploadedImage = await cloudinary.uploader.upload(image.tempFilePath)
+			fs.unlink(image.tempFilePath, err => {
+				if (err) {
+					console.log('Cannot Delete File')
+				}
+			})
 			const newInstane = new Instance({
 				name,
 				address,
@@ -31,7 +78,7 @@ module.exports = {
 					cat_id,
 					cat_name,
 				},
-				image,
+				image: uploadedImage.url,
 				latitude,
 				longitude,
 			})
@@ -42,6 +89,12 @@ module.exports = {
 				instance: result,
 			})
 		} catch (error) {
+			const { image } = req.files || {}
+			fs.unlink(image.tempFilePath, err => {
+				if (err) {
+					console.log('Cannot Delete File')
+				}
+			})
 			HttpError.handle(res, error)
 		}
 	},
@@ -96,12 +149,18 @@ module.exports = {
 	},
 	addService: async (req, res) => {
 		try {
+			const { errors, isValid } = validateServiceInput(req.body)
+			if (!isValid) {
+				throw new HttpError(400, 'Bad request', errors)
+			}
+
 			const result = await Instance.findById(req.params.id)
 			if (!result) {
 				throw new HttpError(404, 'Not Found', 'Instance not found')
 			}
 			const newService = {
 				name: req.body.name,
+				duration: req.body.duration,
 			}
 
 			result.services.unshift(newService)

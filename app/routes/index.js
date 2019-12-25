@@ -6,7 +6,7 @@ const { verifyToken, verifyUser } = require('../../middlewares/auth')
 const Router = express.Router()
 
 Router.use('/user', user)
-Router.use('/category', verifyToken, verifyUser, category)
-Router.use('/instances', verifyToken, verifyUser, instances)
+Router.use('/category', category)
+Router.use('/instances', instances)
 
 module.exports = Router

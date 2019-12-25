@@ -28,6 +28,10 @@ const InstancesSchema = new Schema({
 				type: String,
 				required: true,
 			},
+			duration: {
+				type: Number,
+				required: true,
+			},
 		},
 	],
 	image: {
