@@ -175,6 +175,37 @@ module.exports = {
 			HttpError.handle(res, error)
 		}
 	},
+	editService: async (req, res) => {
+		try {
+			const result = await Instance.findById(req.params.id)
+			if (!result) {
+				throw new HttpError(404, 'Not Found', 'Instance not found')
+			}
+			const indexServ = result.services.findIndex(
+				serv => serv._id == req.params.service_id
+			)
+			let data = { _id: req.params.service_id, name: '', duration: 0 }
+
+			if (req.body.name) {
+				data.name = req.body.name
+			}
+			if (req.body.duration) {
+				data.duration = req.body.duration
+			}
+
+			result.services[indexServ] = data
+
+			const final = await result.save()
+
+			res.json({
+				code: 200,
+				status: 'OK',
+				final,
+			})
+		} catch (error) {
+			HttpError.handle(res, error)
+		}
+	},
 	showServices: async (req, res) => {
 		try {
 			const result = await Instance.findById(req.params.id)

@@ -11,6 +11,7 @@ const server = express()
 
 const PORT = process.env.PORT || 9400
 
+server.use(cors())
 server.use(morgan('dev'))
 server.use(express.static('./public'))
 server.use(
@@ -20,7 +21,6 @@ server.use(
 	})
 )
 server.use('/api', routes)
-server.use(cors())
 
 server.get('/', (req, res) => {
 	res.send('Welcome to Ngantri API 🎉🎉')
@@ -43,7 +43,7 @@ const start = async () => {
 			}
 		)
 
-		app.listen(PORT, () => {
+		server.listen(PORT, () => {
 			console.log(`Server Running on port ${PORT}`)
 		})
 	} catch (error) {

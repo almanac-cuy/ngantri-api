@@ -3,11 +3,12 @@ const { hash, genSalt, compare } = require('bcryptjs')
 const HttpError = require('../../helpers/HttpError')
 const gravatar = require('gravatar')
 const jwt = require('jsonwebtoken')
-const messagebird = require('../../config/messagebird')
 const {
 	validateRegisterInput,
 	validateLoginInput,
 } = require('../../validators/user')
+const fs = require('fs')
+const cloudinary = require('../../config/cloudinary')
 
 module.exports = {
 	register: async (req, res) => {
@@ -96,52 +97,82 @@ module.exports = {
 			HttpError.handle(res, error)
 		}
 	},
-	verifyUser: (req, res) => {
+	editUserImage: async (req, res) => {
 		try {
-			const { phone } = req.body
+			const { id } = req.params
+			const result = await User.findOne({ _id: id })
+			if (!result) {
+				throw new HttpError(404, 'Not Found', 'User not found')
+			}
 
-			messagebird.verify.create(
-				phone,
-				{
-					originator: 'Ngantri.app',
-					template: 'Your verification code is %token. ',
-				},
-				(err, response) => {
-					if (err) {
-						console.log(err)
-						throw new HttpError(400, 'Bad Request', err.errors[0].description)
-					} else {
-						console.log(response)
-						req.messagebird_id = response.id
-						res.json({
-							message: 'Succes send token',
-							id: response.id,
-						})
-					}
+			const { avatar } = req.files || {}
+			if (!avatar) {
+				throw new HttpError(400, 'Bad Request', { avatar: 'No File Selected' })
+			}
+
+			const filetypes = /jpeg|jpg|png|gif/
+			const mimetype = filetypes.test(avatar.mimetype)
+			if (!mimetype) {
+				try {
+					fs.unlinkSync(avatar.tempFilePath)
+					throw new HttpError(400, 'Bad Request', 'File Must be an Image')
+				} catch (err) {
+					HttpError.handle(res, err)
 				}
+			}
+
+			const uploadedImage = await cloudinary.uploader.upload(
+				avatar.tempFilePath
 			)
+			fs.unlink(avatar.tempFilePath, err => {
+				if (err) {
+					console.log('Cannot Delete File')
+				}
+			})
+
+			const user = await User.findOneAndUpdate(
+				{ _id: id },
+				{ avatar: uploadedImage.url }
+			)
+			res.status(200).json({
+				code: 200,
+				status: 'OK',
+				message: 'Succes Update',
+				user,
+			})
 		} catch (error) {
 			HttpError.handle(res, error)
 		}
 	},
-	checkVerify: (req, res) => {
-		const id = req.messagebird_id
-		const { token } = req.body
-
-		messagebird.verify.verify(id, token, function(err, response) {
-			if (err) {
-				// Verification has failed
-				console.log(err)
-				// res.render('step2', {
-				// 	error: err.errors[0].description,
-				// 	id: id,
-				// })
-				return res.status(400).json(err.errors[0].description)
-			} else {
-				// Verification was successful
-				console.log(response)
-				res.json(response)
+	editUserData: async (req, res) => {
+		try {
+			const { id } = req.params
+			const result = await User.findById(id)
+			if (!result) {
+				throw new HttpError(404, 'Not Found', 'User not found')
 			}
-		})
+
+			let data = {}
+
+			if (req.body.name) {
+				data.name = req.body.name
+			}
+			if (req.body.email) {
+				data.email = req.body.email
+			}
+			if (req.body.phone) {
+				data.phone = req.body.phone
+			}
+
+			const user = await User.findOneAndUpdate({ _id: id }, data)
+			res.status(200).json({
+				code: 200,
+				status: 'OK',
+				message: 'Succes Update',
+				user,
+			})
+		} catch (error) {
+			HttpError.handle(res, error)
+		}
 	},
 }
