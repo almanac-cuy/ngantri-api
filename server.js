@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const http = require('http')
 const mongoose = require('mongoose')
-const morgan = require('morgan')
+// const morgan = require('morgan')
 const fileUploads = require('express-fileupload')
 const routes = require('./app/routes')
 const cors = require('cors')
@@ -12,7 +12,7 @@ const server = express()
 const PORT = process.env.PORT || 9400
 
 server.use(cors())
-server.use(morgan('dev'))
+// server.use(morgan('dev'))
 server.use(express.static('./public'))
 server.use(
 	fileUploads({
